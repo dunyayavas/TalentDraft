@@ -126,6 +126,41 @@ export default function AdminPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Talent Pool</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <div className="flex items-center gap-2">
+            <input type="file" accept=".csv" onChange={(e)=>{const f=e.target.files?.[0]; if (f) onCsvUpload(f);}} />
+            <Button variant="secondary" onClick={onDownloadTemplate}>Download CSV Template</Button>
+          </div>
+          <p className="text-sm text-muted-foreground">Detected talents: {talents.length}. Showing all columns below.</p>
+          {rawRows.length>0 && (
+            <div className="max-h-80 overflow-auto border rounded-md">
+              <Table>
+                <THead>
+                  <TR>
+                    {rawHeaders.map((h) => (
+                      <TH key={h}>{h}</TH>
+                    ))}
+                  </TR>
+                </THead>
+                <TBody>
+                  {rawRows.map((row, i) => (
+                    <TR key={i}>
+                      {rawHeaders.map((h) => (
+                        <TD key={h}>{row[h] || ""}</TD>
+                      ))}
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Players</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -158,41 +193,6 @@ export default function AdminPage() {
               </TBody>
             </Table>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Talent Pool</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3">
-          <div className="flex items-center gap-2">
-            <input type="file" accept=".csv" onChange={(e)=>{const f=e.target.files?.[0]; if (f) onCsvUpload(f);}} />
-            <Button variant="secondary" onClick={onDownloadTemplate}>Download CSV Template</Button>
-          </div>
-          <p className="text-sm text-muted-foreground">Detected talents: {talents.length}. Showing all columns below.</p>
-          {rawRows.length>0 && (
-            <div className="max-h-80 overflow-auto border rounded-md">
-              <Table>
-                <THead>
-                  <TR>
-                    {rawHeaders.map((h) => (
-                      <TH key={h}>{h}</TH>
-                    ))}
-                  </TR>
-                </THead>
-                <TBody>
-                  {rawRows.map((row, i) => (
-                    <TR key={i}>
-                      {rawHeaders.map((h) => (
-                        <TD key={h}>{row[h] || ""}</TD>
-                      ))}
-                    </TR>
-                  ))}
-                </TBody>
-              </Table>
-            </div>
-          )}
           <div className="flex gap-2">
             <Button onClick={onSetupGame} disabled={!sessionName || rawRows.length===0 || players.length===0}>Setup the Game</Button>
           </div>

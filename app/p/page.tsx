@@ -30,7 +30,7 @@ function PlayerPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<{ id: string; name: string; pick_mode: "percentage" | "fixed"; pick_value: number } | null>(null);
   const [player, setPlayer] = useState<any>(null);
-  const [talents, setTalents] = useState<Array<{ id: string; name: string }>>([]);
+  const [talents, setTalents] = useState<Array<{ id: string; name: string; func?: string | null }>>([]);
   const [slots, setSlots] = useState<Array<{ talentId: string; rationale?: string } | null>>([]);
 
   const N = useMemo(() => {
@@ -56,7 +56,7 @@ function PlayerPageInner() {
         const data = await fetchGameByToken(token);
         setSession(data.session);
         setPlayer(data.player);
-        setTalents((data.talents || []).map((t: any) => ({ id: t.id, name: t.name })));
+        setTalents((data.talents || []).map((t: any) => ({ id: t.id, name: t.name, func: (t as any).function || null })));
         const total = (data.talents || []).length;
         let quota = data.session.pick_mode === "percentage" ? Math.max(1, Math.ceil((total * data.session.pick_value) / 100)) : Math.max(1, Math.min(total, Math.floor(data.session.pick_value)));
         const initial = new Array(quota).fill(null) as Array<{ talentId: string; rationale?: string } | null>;
@@ -87,9 +87,10 @@ function PlayerPageInner() {
 
   const pickedIds = useMemo(() => new Set(slots.filter(Boolean).map((s) => (s as any).talentId)), [slots]);
   const pool = useMemo(() => talents.filter((t) => !pickedIds.has(t.id)), [talents, pickedIds]);
-  const idToName = useMemo(() => (id: string) => {
+  const idToDisplay = useMemo(() => (id: string) => {
     const t = talents.find((x) => x.id === id);
-    return t?.name || id;
+    if (!t) return id;
+    return t.func ? `${t.name} — ${t.func}` : t.name;
   }, [talents]);
 
   function onDragEnd(e: DragEndEvent) {
@@ -150,23 +151,14 @@ function PlayerPageInner() {
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[70vh]">
-              <Table>
-                <THead>
-                  <TR>
-                    <TH>Talent</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {pool.map((t) => (
-                    <DraggablePoolRow key={t.id} id={t.id} name={t.name} />
-                  ))}
-                  {pool.length === 0 && (
-                    <TR>
-                      <TD className="text-muted-foreground">All picked.</TD>
-                    </TR>
-                  )}
-                </TBody>
-              </Table>
+              <div className="grid gap-2">
+                {pool.map((t) => (
+                  <DraggablePoolCard key={t.id} id={t.id} name={t.name} func={t.func || undefined} />
+                ))}
+                {pool.length === 0 && (
+                  <div className="text-sm text-muted-foreground">All picked.</div>
+                )}
+              </div>
             </ScrollArea>
           </CardContent>
         </Card>
@@ -181,9 +173,9 @@ function PlayerPageInner() {
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[70vh]">
-              <div className="grid gap-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {slots.map((s, idx) => (
-                  <PickSlot key={idx} index={idx} value={s} displayName={s ? idToName(s.talentId) : undefined} onChange={(val) => {
+                  <PickSlot key={idx} index={idx} value={s} displayName={s ? idToDisplay(s.talentId) : undefined} onChange={(val) => {
                     setSlots((prev) => {
                       const next = [...prev];
                       next[idx] = val;
@@ -200,13 +192,20 @@ function PlayerPageInner() {
   );
 }
 
-function DraggablePoolRow({ id, name }: { id: string; name: string }) {
+function DraggablePoolCard({ id, name, func }: { id: string; name: string; func?: string }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: `talent:${id}` });
   const style = { transform: CSS.Transform.toString(transform || null) } as React.CSSProperties;
   return (
-    <TR ref={setNodeRef} {...attributes} {...listeners} style={style} className="cursor-grab select-none">
-      <TD className="py-2">{name}</TD>
-    </TR>
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={style}
+      className="cursor-grab select-none rounded-md border px-3 py-2 bg-background hover:bg-muted text-left"
+    >
+      <div className="text-sm font-medium leading-tight">{name}</div>
+      {func && <div className="text-xs text-muted-foreground mt-0.5">{func}</div>}
+    </div>
   );
 }
 
