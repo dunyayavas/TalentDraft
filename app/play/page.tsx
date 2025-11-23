@@ -227,7 +227,7 @@ export default function PlayPage() {
 
 function DraggablePoolItem({ id }: { id: string }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: `pool:${id}` });
-  const style = { transform: CSS.Translate.toString(transform || { x: 0, y: 0 }) } as React.CSSProperties;
+  const style = { transform: CSS.Transform.toString(transform || null) } as React.CSSProperties;
   return (
     <button ref={setNodeRef} {...listeners} {...attributes} style={style} className="h-8 px-2 text-xs rounded-md border bg-background hover:bg-muted">
       Drag

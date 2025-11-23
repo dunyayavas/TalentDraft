@@ -50,7 +50,7 @@ export default function AdminPage() {
 
   async function onCsvUpload(file: File) {
     const text = await fileToText(file);
-    const parsed = Papa.parse<string[]>(text, { header: true, skipEmptyLines: true });
+    const parsed: any = Papa.parse(text, { header: true, skipEmptyLines: true });
     const data = parsed.data as unknown as Record<string, string>[];
     const headers = Array.from(new Set(data.flatMap((row) => Object.keys(row))));
     setRawHeaders(headers);

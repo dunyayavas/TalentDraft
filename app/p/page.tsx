@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -14,6 +14,14 @@ import { fetchGameByToken, savePlayerPicks } from "@/lib/supabaseService";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
 
 export default function PlayerPage() {
+  return (
+    <Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>
+      <PlayerPageInner />
+    </Suspense>
+  );
+}
+
+function PlayerPageInner() {
   const search = useSearchParams();
   const token = search.get("token") || "";
   const sensors = useSensors(useSensor(PointerSensor));
