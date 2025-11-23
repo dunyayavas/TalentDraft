@@ -285,7 +285,7 @@ function DraggablePickCard({ index, value, displayName, onRemove, onRationale }:
               onChange={(e) => setDraft(e.target.value)}
             />
             <div className="mt-2 flex justify-end gap-2">
-              <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setOpen(false)}>
+              <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
               <Button type="button" size="sm" className="h-7 px-2 text-xs" onClick={onSaveClick}>
