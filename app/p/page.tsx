@@ -30,9 +30,12 @@ function PlayerPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<{ id: string; name: string; pick_mode: "percentage" | "fixed"; pick_value: number } | null>(null);
   const [player, setPlayer] = useState<any>(null);
-  const [talents, setTalents] = useState<Array<{ id: string; name: string; func?: string | null }>>([]);
+  const [talents, setTalents] = useState<Array<{ id: string; name: string; func?: string | null; timeInCompany?: string | null }>>([]);
   const [slots, setSlots] = useState<Array<{ talentId: string; rationale?: string } | null>>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterField, setFilterField] = useState<"function" | "timeInCompany" | null>(null);
+  const [filterValue, setFilterValue] = useState<string | null>(null);
 
   const N = useMemo(() => {
     if (!session) return 0;
@@ -72,7 +75,12 @@ function PlayerPageInner() {
         const data = await fetchGameByToken(token);
         setSession(data.session);
         setPlayer(data.player);
-        setTalents((data.talents || []).map((t: any) => ({ id: t.id, name: t.name, func: (t as any).function || null })));
+        setTalents((data.talents || []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          func: (t as any).function || null,
+          timeInCompany: (t as any).time_in_company || null,
+        })));
         const total = (data.talents || []).length;
         let quota = data.session.pick_mode === "percentage" ? Math.max(1, Math.ceil((total * data.session.pick_value) / 100)) : Math.max(1, Math.min(total, Math.floor(data.session.pick_value)));
         const initial = new Array(quota).fill(null) as Array<{ talentId: string; rationale?: string } | null>;
@@ -102,7 +110,17 @@ function PlayerPageInner() {
   }, [N]);
 
   const pickedIds = useMemo(() => new Set(slots.filter(Boolean).map((s) => (s as any).talentId)), [slots]);
-  const pool = useMemo(() => talents.filter((t) => !pickedIds.has(t.id)), [talents, pickedIds]);
+  const pool = useMemo(() => {
+    let base = talents.filter((t) => !pickedIds.has(t.id));
+    if (filterField && filterValue) {
+      if (filterField === "function") {
+        base = base.filter((t) => (t.func || "") === filterValue);
+      } else if (filterField === "timeInCompany") {
+        base = base.filter((t) => (t.timeInCompany || "") === filterValue);
+      }
+    }
+    return base;
+  }, [talents, pickedIds, filterField, filterValue]);
   const idToDisplay = useMemo(() => (id: string) => {
     const t = talents.find((x) => x.id === id);
     if (!t) return id;
@@ -183,7 +201,18 @@ function PlayerPageInner() {
       <div className="grid gap-6 sm:grid-cols-3 overflow-hidden">
         <Card className="sm:col-span-1">
           <CardHeader>
-            <CardTitle>Talent Pool</CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle>Talent Pool</CardTitle>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                onClick={() => setFilterOpen((v) => !v)}
+              >
+                Filter
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[70vh] overflow-x-hidden">
@@ -195,6 +224,69 @@ function PlayerPageInner() {
                   <div className="text-sm text-muted-foreground">All picked.</div>
                 )}
               </div>
+              {filterOpen && (
+                <div className="mt-3 rounded-md border bg-background p-2 text-xs space-y-2">
+                  <div className="flex gap-2">
+                    <label className="flex-1">
+                      <span className="block mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">Field</span>
+                      <select
+                        className="w-full rounded-md border px-2 py-1 bg-background"
+                        value={filterField || ""}
+                        onChange={(e) => {
+                          const v = e.target.value as any;
+                          setFilterField(v || null);
+                          setFilterValue(null);
+                        }}
+                      >
+                        <option value="">All</option>
+                        <option value="function">Function</option>
+                        <option value="timeInCompany">Time in Company</option>
+                      </select>
+                    </label>
+                    <label className="flex-[1.2]">
+                      <span className="block mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">Value</span>
+                      <select
+                        className="w-full rounded-md border px-2 py-1 bg-background"
+                        value={filterValue || ""}
+                        onChange={(e) => setFilterValue(e.target.value || null)}
+                        disabled={!filterField}
+                      >
+                        <option value="">All</option>
+                        {filterField === "function" &&
+                          Array.from(new Set(talents.map((t) => t.func || "").filter(Boolean))).map((v) => (
+                            <option key={v} value={v}>{v}</option>
+                          ))}
+                        {filterField === "timeInCompany" &&
+                          Array.from(new Set(talents.map((t) => t.timeInCompany || "").filter(Boolean))).map((v) => (
+                            <option key={v} value={v}>{v}</option>
+                          ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2"
+                      onClick={() => {
+                        setFilterField(null);
+                        setFilterValue(null);
+                      }}
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={() => setFilterOpen(false)}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              )}
             </ScrollArea>
           </CardContent>
         </Card>
@@ -242,12 +334,17 @@ function DraggablePoolCard({ id, name, func }: { id: string; name: string; func?
     <div
       ref={setNodeRef}
       {...attributes}
-      {...listeners}
       style={style}
       className="cursor-grab select-none rounded-md border px-3 py-2 bg-background hover:bg-muted text-left"
     >
-      <div className="text-sm font-medium leading-tight">{name}</div>
-      {func && <div className="text-xs text-muted-foreground mt-0.5">{func}</div>}
+      <button
+        type="button"
+        {...listeners}
+        className="w-full text-left cursor-grab"
+      >
+        <div className="text-sm font-medium leading-tight">{name}</div>
+        {func && <div className="text-xs text-muted-foreground mt-0.5">{func}</div>}
+      </button>
     </div>
   );
 }
@@ -283,16 +380,19 @@ function DraggablePickCard({ index, value, displayName, onRemove, onRationale }:
     <div
       ref={setNodeRef}
       {...attributes}
-      {...listeners}
       style={style}
       className={`relative flex items-start gap-2 rounded-md border px-3 py-2 ${isDragging ? "bg-muted" : "bg-background"}`}
     >
-      <div className="flex-1">
+      <button
+        type="button"
+        {...listeners}
+        className="flex-1 text-left cursor-grab"
+      >
         <div className="font-medium text-sm mb-1 leading-tight">{displayName}</div>
         {value.rationale && (
           <div className="text-xs text-muted-foreground line-clamp-2">{value.rationale}</div>
         )}
-      </div>
+      </button>
       <div className="flex flex-col items-end gap-1">
         <div className="flex gap-1">
           <Button
@@ -301,6 +401,7 @@ function DraggablePickCard({ index, value, displayName, onRemove, onRationale }:
             variant="outline"
             className="h-7 w-7 text-xs"
             onClick={() => {
+              
               setDraft(value.rationale || "");
               setOpen((prev) => !prev);
             }}
@@ -312,11 +413,11 @@ function DraggablePickCard({ index, value, displayName, onRemove, onRationale }:
             type="button"
             size="sm"
             variant="outline"
-            className="h-7 w-7 text-xs text-destructive border-destructive/50"
+            className="h-7 w-7 text-sm text-destructive border-destructive/50 flex items-center justify-center"
             onClick={onRemove}
             aria-label="Remove pick"
           >
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
               <path
                 d="M9 3h6a1 1 0 0 1 .96.73L16.78 5H20a1 1 0 1 1 0 2h-1.1l-.74 11.1A2 2 0 0 1 16.17 20H7.83a2 2 0 0 1-1.99-1.9L5.1 7H4a1 1 0 0 1 0-2h3.22l.82-1.27A1 1 0 0 1 9 3Zm6.9 4H8.1l.7 10.4a.5.5 0 0 0 .5.46h5.4a.5.5 0 0 0 .5-.46L15.9 7ZM10 9a1 1 0 0 1 .99.88L11 10v6a1 1 0 0 1-1.99.12L9 16v-6a1 1 0 0 1 1-1Zm4 0a1 1 0 0 1 .99.88L15 10v6a1 1 0 0 1-1.99.12L13 16v-6a1 1 0 0 1 1-1Z"
                 fill="currentColor"
