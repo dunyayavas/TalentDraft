@@ -109,6 +109,21 @@ function PlayerPageInner() {
     return t.func ? `${t.name} — ${t.func}` : t.name;
   }, [talents]);
 
+  function getActiveLabel() {
+    if (!activeId) return null;
+    if (activeId.startsWith("talent:")) {
+      const id = activeId.slice(7);
+      return idToDisplay(id);
+    }
+    if (activeId.startsWith("slot:")) {
+      const idx = parseInt(activeId.slice(5), 10);
+      const slot = slots[idx];
+      if (!slot) return null;
+      return idToDisplay(slot.talentId);
+    }
+    return null;
+  }
+
   function onDragStart(e: DragStartEvent) {
     setActiveId(String(e.active.id));
   }
