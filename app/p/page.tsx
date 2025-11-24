@@ -200,7 +200,7 @@ function PlayerPageInner() {
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <div className="grid gap-6 sm:grid-cols-3 overflow-hidden">
         <Card className="sm:col-span-1">
-          <CardHeader>
+          <CardHeader className="relative">
             <div className="flex items-center justify-between gap-2">
               <CardTitle>Talent Pool</CardTitle>
               <Button
@@ -213,28 +213,17 @@ function PlayerPageInner() {
                 Filter
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[70vh] overflow-x-hidden">
-              <div className="grid gap-2">
-                {pool.map((t) => (
-                  <DraggablePoolCard key={t.id} id={t.id} name={t.name} func={t.func || undefined} />
-                ))}
-                {pool.length === 0 && (
-                  <div className="text-sm text-muted-foreground">All picked.</div>
-                )}
-              </div>
-              {filterOpen && (
-                <div className="mt-3 rounded-md border bg-background p-2 text-xs space-y-2">
-                  <div className="flex gap-2">
-                    <label className="flex-1">
-                      <span className="block mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">Field</span>
-                      <select
-                        className="w-full rounded-md border px-2 py-1 bg-background"
-                        value={filterField || ""}
-                        onChange={(e) => {
-                          const v = e.target.value as any;
-                          setFilterField(v || null);
+            {filterOpen && (
+              <div className="absolute right-0 top-full mt-2 w-72 rounded-md border bg-background p-2 text-xs space-y-2 shadow-md z-20">
+                <div className="flex gap-2">
+                  <label className="flex-1">
+                    <span className="block mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">Field</span>
+                    <select
+                      className="w-full rounded-md border px-2 py-1 bg-background"
+                      value={filterField || ""}
+                      onChange={(e) => {
+                        const v = e.target.value as any;
+                        setFilterField(v || null);
                           setFilterValue(null);
                         }}
                       >
@@ -286,7 +275,18 @@ function PlayerPageInner() {
                     </Button>
                   </div>
                 </div>
-              )}
+            )}
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[70vh] overflow-x-hidden">
+              <div className="grid gap-2">
+                {pool.map((t) => (
+                  <DraggablePoolCard key={t.id} id={t.id} name={t.name} func={t.func || undefined} />
+                ))}
+                {pool.length === 0 && (
+                  <div className="text-sm text-muted-foreground">All picked.</div>
+                )}
+              </div>
             </ScrollArea>
           </CardContent>
         </Card>
@@ -328,14 +328,14 @@ function PlayerPageInner() {
 }
 
 function DraggablePoolCard({ id, name, func }: { id: string; name: string; func?: string }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: `talent:${id}` });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `talent:${id}` });
   const style = { transform: CSS.Transform.toString(transform || null) } as React.CSSProperties;
   return (
     <div
       ref={setNodeRef}
       {...attributes}
       style={style}
-      className="cursor-grab select-none rounded-md border px-3 py-2 bg-background hover:bg-muted text-left"
+      className={`cursor-grab select-none rounded-md border px-3 py-2 bg-background hover:bg-muted text-left ${isDragging ? "opacity-0" : ""}`}
     >
       <button
         type="button"
@@ -381,7 +381,7 @@ function DraggablePickCard({ index, value, displayName, onRemove, onRationale }:
       ref={setNodeRef}
       {...attributes}
       style={style}
-      className={`relative flex items-start gap-2 rounded-md border px-3 py-2 ${isDragging ? "bg-muted" : "bg-background"}`}
+      className={`relative flex items-start gap-2 rounded-md border px-3 py-2 ${isDragging ? "bg-muted opacity-0" : "bg-background"}`}
     >
       <button
         type="button"
@@ -426,39 +426,41 @@ function DraggablePickCard({ index, value, displayName, onRemove, onRationale }:
           </Button>
         </div>
         {open && (
-          <div className="absolute right-0 top-full mt-1 w-56 rounded-md border bg-background p-2 shadow-md z-10">
-            <Label className="text-xs mb-1 block">Rationale</Label>
-            <textarea
-              className="w-full rounded-md border px-2 py-1 text-xs bg-background"
-              rows={3}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onPointerDown={(e) => e.stopPropagation()}
-            />
-            <div className="mt-2 flex justify-end gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpen(false);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSaveClick();
-                }}
-              >
-                Save
-              </Button>
+          <div
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/40"
+            onClick={() => setOpen(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-md border bg-background p-4 shadow-lg mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Label className="text-xs mb-1 block">Rationale</Label>
+              <textarea
+                className="w-full rounded-md border px-2 py-1 text-sm bg-background"
+                rows={4}
+                value={draft}
+                autoFocus
+                onChange={(e) => setDraft(e.target.value)}
+              />
+              <div className="mt-3 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-3 text-xs"
+                  onClick={() => setOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 px-3 text-xs"
+                  onClick={onSaveClick}
+                >
+                  Save
+                </Button>
+              </div>
             </div>
           </div>
         )}
