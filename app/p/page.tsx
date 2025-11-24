@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ function PlayerPageInner() {
   const [player, setPlayer] = useState<any>(null);
   const [talents, setTalents] = useState<Array<{ id: string; name: string; func?: string | null }>>([]);
   const [slots, setSlots] = useState<Array<{ talentId: string; rationale?: string } | null>>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const N = useMemo(() => {
     if (!session) return 0;
@@ -47,6 +48,21 @@ function PlayerPageInner() {
         setLoading(false);
         return;
       }
+
+  function getActiveLabel() {
+    if (!activeId) return null;
+    if (activeId.startsWith("talent:")) {
+      const id = activeId.slice(7);
+      return idToDisplay(id);
+    }
+    if (activeId.startsWith("slot:")) {
+      const idx = parseInt(activeId.slice(5), 10);
+      const slot = slots[idx];
+      if (!slot) return null;
+      return idToDisplay(slot.talentId);
+    }
+    return null;
+  }
       if (!isSupabaseConfigured()) {
         setError("Supabase is not configured.");
         setLoading(false);
@@ -93,8 +109,13 @@ function PlayerPageInner() {
     return t.func ? `${t.name} — ${t.func}` : t.name;
   }, [talents]);
 
+  function onDragStart(e: DragStartEvent) {
+    setActiveId(String(e.active.id));
+  }
+
   function onDragEnd(e: DragEndEvent) {
     const { active, over } = e;
+    setActiveId(null);
     if (!over) return;
     const a = String(active.id);
     const o = String(over.id);
@@ -143,8 +164,8 @@ function PlayerPageInner() {
   if (error) return <div className="text-sm text-destructive">{error}</div>;
 
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="grid gap-6 sm:grid-cols-3">
+    <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      <div className="grid gap-6 sm:grid-cols-3 overflow-hidden">
         <Card className="sm:col-span-1">
           <CardHeader>
             <CardTitle>Talent Pool</CardTitle>
@@ -172,7 +193,7 @@ function PlayerPageInner() {
             </div>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[70vh]">
+            <ScrollArea className="h-[70vh] overflow-x-hidden">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {slots.map((s, idx) => (
                   <PickSlot key={idx} index={idx} value={s} displayName={s ? idToDisplay(s.talentId) : undefined} onChange={(val) => {
@@ -188,6 +209,13 @@ function PlayerPageInner() {
           </CardContent>
         </Card>
       </div>
+      <DragOverlay>
+        {activeId && (
+          <div className="rounded-md border bg-muted px-3 py-2 text-xs shadow-md">
+            {getActiveLabel()}
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
   );
 }
@@ -226,7 +254,7 @@ function PickSlot({ index, value, displayName, onChange }: { index: number; valu
 }
 
 function DraggablePickCard({ index, value, displayName, onRemove, onRationale }: { index: number; value: { talentId: string; rationale?: string }; displayName: string; onRemove: () => void; onRationale: (r: string) => void }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: `slot:${index}` });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `slot:${index}` });
   const style = { transform: CSS.Transform.toString(transform || null) } as React.CSSProperties;
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value.rationale || "");
@@ -237,7 +265,13 @@ function DraggablePickCard({ index, value, displayName, onRemove, onRationale }:
   }
 
   return (
-    <div ref={setNodeRef} {...attributes} {...listeners} style={style} className="relative flex items-start gap-2">
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={style}
+      className={`relative flex items-start gap-2 rounded-md border px-3 py-2 ${isDragging ? "bg-muted" : "bg-background"}`}
+    >
       <div className="flex-1">
         <div className="font-medium text-sm mb-1 leading-tight">{displayName}</div>
         {value.rationale && (
@@ -283,12 +317,30 @@ function DraggablePickCard({ index, value, displayName, onRemove, onRationale }:
               rows={3}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              onPointerDown={(e) => e.stopPropagation()}
             />
             <div className="mt-2 flex justify-end gap-2">
-              <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setOpen(false)}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpen(false);
+                }}
+              >
                 Cancel
               </Button>
-              <Button type="button" size="sm" className="h-7 px-2 text-xs" onClick={onSaveClick}>
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSaveClick();
+                }}
+              >
                 Save
               </Button>
             </div>
