@@ -161,6 +161,9 @@ export async function listProjectsWithStats(): Promise<ProjectWithStats[]> {
 export async function deleteProject(projectId: string) {
   const supa = getSupabase();
   if (!supa) throw new Error("Supabase not configured");
+  // Delete sessions (and their talents/players/picks via ON DELETE CASCADE)
+  const { error: sErr } = await supa.from("sessions").delete().eq("project_id", projectId);
+  if (sErr) throw sErr;
   const { error } = await supa.from("projects").delete().eq("id", projectId);
   if (error) throw error;
 }

@@ -186,7 +186,7 @@ export default function ProjectDetailsPage() {
                                   router.push(`/game-admin?session=${s.id}`);
                                 }}
                               >
-                                Players & Picks
+                                Edit Game
                               </button>
                               <button
                                 className="block w-full px-3 py-2 text-left hover:bg-muted disabled:opacity-60"
@@ -226,6 +226,40 @@ export default function ProjectDetailsPage() {
                               >
                                 {resultsLoadingId === s.id ? "Opening Results…" : "Results"}
                               </button>
+                              {role === "super_admin" && (
+                                <button
+                                  className="block w-full px-3 py-2 text-left hover:bg-muted text-destructive"
+                                  onClick={async () => {
+                                    setOpenMenuId(null);
+                                    if (!window.confirm("Delete this game and all its data? This cannot be undone.")) return;
+                                    try {
+                                      if (!isSupabaseConfigured()) {
+                                        alert("Supabase is not configured.");
+                                        return;
+                                      }
+                                      const supa = getSupabase();
+                                      if (!supa) throw new Error("Supabase client not available");
+                                      const { error: delErr } = await supa
+                                        .from("sessions")
+                                        .delete()
+                                        .eq("id", s.id);
+                                      if (delErr) throw delErr;
+                                      const { data: sess, error: reloadErr } = await supa
+                                        .from("sessions")
+                                        .select("id, name, company, pick_mode, pick_value, created_at")
+                                        .eq("project_id", projectId)
+                                        .order("created_at", { ascending: false });
+                                      if (reloadErr) throw reloadErr;
+                                      setSessions((sess || []) as any);
+                                    } catch (e: any) {
+                                      console.error(e);
+                                      alert(e?.message || "Failed to delete game");
+                                    }
+                                  }}
+                                >
+                                  Delete Game
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>

@@ -37,6 +37,9 @@ export default function GameAdminPage() {
   const router = useRouter();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [session, setSession] = useState<SessionRow | null>(null);
+  const [sessionName, setSessionName] = useState("");
+  const [pickMode, setPickMode] = useState<"percentage" | "fixed">("fixed");
+  const [pickValue, setPickValue] = useState<number>(10);
   const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [talentCount, setTalentCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,6 +83,9 @@ export default function GameAdminPage() {
           .single();
         if (sErr || !sess) throw sErr || new Error("Session not found");
         setSession(sess as any);
+        setSessionName((sess as any).name as string);
+        setPickMode(((sess as any).pick_mode as "percentage" | "fixed") ?? "fixed");
+        setPickValue((sess as any).pick_value as number);
 
         const { data: pls, error: pErr } = await supa
           .from("players")
@@ -238,6 +244,81 @@ export default function GameAdminPage() {
 
       {!loading && !error && (
         <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Edit Game Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="session-name">Name</Label>
+                <Input
+                  id="session-name"
+                  value={sessionName}
+                  onChange={(e) => setSessionName(e.target.value)}
+                  placeholder="e.g., Q1 Executive Draft"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Pick Mode</Label>
+                <div className="flex gap-2">
+                  <select
+                    className="h-9 text-sm rounded-md border px-2 bg-background"
+                    value={pickMode}
+                    onChange={(e) => setPickMode(e.target.value as "percentage" | "fixed")}
+                  >
+                    <option value="fixed">Fixed</option>
+                    <option value="percentage">Percentage</option>
+                  </select>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={pickValue}
+                    onChange={(e) => setPickValue(Number(e.target.value) || 0)}
+                    className="w-28"
+                  />
+                </div>
+              </div>
+              <div className="sm:col-span-2 flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={async () => {
+                    if (!sessionId) return;
+                    if (!isSupabaseConfigured()) {
+                      alert("Supabase is not configured.");
+                      return;
+                    }
+                    try {
+                      const supa = getSupabase();
+                      if (!supa) throw new Error("Supabase client not available");
+                      const { error: uErr } = await supa
+                        .from("sessions")
+                        .update({ name: sessionName, pick_mode: pickMode, pick_value: pickValue })
+                        .eq("id", sessionId);
+                      if (uErr) throw uErr;
+                      setSession((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              name: sessionName,
+                              pick_mode: pickMode,
+                              pick_value: pickValue,
+                            }
+                          : prev,
+                      );
+                      alert("Game settings saved.");
+                    } catch (e: any) {
+                      console.error(e);
+                      alert(e?.message || "Failed to save settings");
+                    }
+                  }}
+                >
+                  Save Settings
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Talent Pool</CardTitle>
