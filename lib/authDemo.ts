@@ -1,3 +1,5 @@
+import { findProjectAdminByCredentials } from "./supabaseService";
+
 export type UserRole = "super_admin" | "admin" | "player";
 
 export interface DemoUser {
@@ -33,8 +35,24 @@ export const demoUsers: DemoUser[] = [
 ];
 
 export async function demoLogin(email: string, password: string): Promise<DemoUser | null> {
-  const user = demoUsers.find((u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  return user || null;
+  const hardcoded = demoUsers.find((u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+  if (hardcoded) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    return hardcoded;
+  }
+
+  // Try to match a project admin in Supabase
+  const projectAdmin = await findProjectAdminByCredentials(email.toLowerCase(), password);
+  if (projectAdmin) {
+    return {
+      id: `proj-admin-${projectAdmin.company}`,
+      email: projectAdmin.email,
+      password,
+      role: "admin",
+      company: projectAdmin.company,
+    };
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  return null;
 }

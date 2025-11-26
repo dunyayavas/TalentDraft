@@ -9,6 +9,7 @@ import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabaseClient";
+import { deleteProject } from "@/lib/supabaseService";
 
 interface ProjectRow {
   id: string;
@@ -94,7 +95,7 @@ export default function ProjectDetailsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">Project Details</h1>
           {project && (
@@ -103,16 +104,35 @@ export default function ProjectDetailsPage() {
             </p>
           )}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            logout();
-            router.push("/");
-          }}
-        >
-          Logout
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              if (!projectId) return;
+              if (!window.confirm("Delete this project and all its sessions? This cannot be undone.")) return;
+              try {
+                await deleteProject(projectId);
+                router.push("/super-admin");
+              } catch (e: any) {
+                console.error(e);
+                alert(e?.message || "Failed to delete project");
+              }
+            }}
+          >
+            Delete Project
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              logout();
+              router.push("/");
+            }}
+          >
+            Logout
+          </Button>
+        </div>
       </div>
 
       {error && <div className="text-sm text-destructive">{error}</div>}

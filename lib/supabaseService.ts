@@ -150,6 +150,29 @@ export async function listProjectsWithStats(): Promise<ProjectWithStats[]> {
   });
 }
 
+export async function deleteProject(projectId: string) {
+  const supa = getSupabase();
+  if (!supa) throw new Error("Supabase not configured");
+  const { error } = await supa.from("projects").delete().eq("id", projectId);
+  if (error) throw error;
+}
+
+// Demo-only admin resolver: given email/password, see if there is a project
+// whose admin_email/admin_password match and, if so, return basic admin info.
+export async function findProjectAdminByCredentials(email: string, password: string): Promise<{ email: string; company: string } | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supa = getSupabase();
+  if (!supa) return null;
+  const { data, error } = await supa
+    .from("projects")
+    .select("company")
+    .eq("admin_email", email)
+    .eq("admin_password", password)
+    .maybeSingle();
+  if (error || !data) return null;
+  return { email, company: (data as any).company as string };
+}
+
 // For results page: given a player token, load its session, talents, and all picks
 // for that session so we can aggregate results.
 export async function fetchResultsByToken(token: string) {
