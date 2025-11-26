@@ -408,92 +408,108 @@ function DraggablePickCard({ index, value, displayName, details, onRemove, onRat
     >
       <button
         type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
         {...listeners}
         className="flex-1 text-left cursor-grab"
       >
         <div className="font-medium text-sm mb-1 leading-tight">{displayName}</div>
       </button>
-      <div className="flex flex-col gap-2 flex-1">
-        <textarea
-          className="mt-1 w-full rounded-md border px-2 py-1 text-xs bg-background"
-          rows={3}
-          placeholder="Rationale (optional)"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-        />
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-7 px-2 text-xs flex items-center gap-1"
-            onClick={onSaveClick}
-          >
-            Save
-          </Button>
-          <div className="flex gap-1">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-7 w-7 text-xs flex items-center justify-center"
-              onClick={() => setShowDetails(true)}
-              aria-label="View details"
-            >
-              <span className="text-lg leading-none">⋯</span>
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-7 w-7 text-sm text-destructive border-destructive/50 flex items-center justify-center"
-              onClick={onRemove}
-              aria-label="Remove pick"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                <path
-                  d="M9 3h6a1 1 0 0 1 .96.73L16.78 5H20a1 1 0 1 1 0 2h-1.1l-.74 11.1A2 2 0 0 1 16.17 20H7.83a2 2 0 0 1-1.99-1.9L5.1 7H4a1 1 0 0 1 0-2h3.22l.82-1.27A1 1 0 0 1 9 3Zm6.9 4H8.1l.7 10.4a.5.5 0 0 0 .5.46h5.4a.5.5 0 0 0 .5-.46L15.9 7ZM10 9a1 1 0 0 1 .99.88L11 10v6a1 1 0 0 1-1.99.12L9 16v-6a1 1 0 0 1 1-1Zm4 0a1 1 0 0 1 .99.88L15 10v6a1 1 0 0 1-1.99.12L13 16v-6a1 1 0 0 1 1-1Z"
-                  fill="currentColor"
-                />
-              </svg>
-            </Button>
-          </div>
-        </div>
-        {showDetails && details && (
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 w-7 text-xs flex items-center justify-center"
+          onClick={() => {
+            setDraft(value.rationale || "");
+            setShowDetails(true);
+          }}
+          aria-label="View details and rationale"
+        >
+          <span className="text-lg leading-none">⋯</span>
+        </Button>
+      </div>
+      {showDetails && details && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/40"
+          onClick={() => setShowDetails(false)}
+        >
           <div
-            className="fixed inset-0 z-40 flex items-center justify-center bg-black/40"
-            onClick={() => setShowDetails(false)}
+            className="w-full max-w-lg max-h-[80vh] rounded-md border bg-background p-4 shadow-lg mx-4 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="w-full max-w-lg max-h-[80vh] rounded-md border bg-background p-4 shadow-lg mx-4 flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-semibold text-sm">{displayName}</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-semibold text-sm">{displayName}</div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                onClick={() => setShowDetails(false)}
+              >
+                Close
+              </Button>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="space-y-1 text-xs mb-3">
+                {Object.entries(details).map(([key, val]) => (
+                  <div key={key} className="flex gap-2">
+                    <div className="w-32 shrink-0 font-medium text-muted-foreground break-words">{key}</div>
+                    <div className="flex-1 break-words">{String(val ?? "")}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2">
+                <Label className="text-xs mb-1 block">Rationale</Label>
+                <textarea
+                  className="w-full rounded-md border px-2 py-1 text-xs bg-background"
+                  rows={4}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                />
+              </div>
+            </ScrollArea>
+            <div className="mt-3 flex justify-between gap-2 text-xs">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 px-3"
+                onClick={() => {
+                  onRemove();
+                  setShowDetails(false);
+                }}
+              >
+                Delete
+              </Button>
+              <div className="flex gap-2">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 px-2 text-xs"
+                  className="h-7 px-3"
                   onClick={() => setShowDetails(false)}
                 >
-                  Close
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7 px-3"
+                  onClick={() => {
+                    onSaveClick();
+                    setShowDetails(false);
+                  }}
+                >
+                  Save
                 </Button>
               </div>
-              <ScrollArea className="flex-1">
-                <div className="space-y-1 text-xs">
-                  {Object.entries(details).map(([key, val]) => (
-                    <div key={key} className="flex gap-2">
-                      <div className="w-32 shrink-0 font-medium text-muted-foreground break-words">{key}</div>
-                      <div className="flex-1 break-words">{String(val ?? "")}</div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
