@@ -89,6 +89,67 @@ export async function savePlayerPicks(sessionId: string, playerId: string, picks
   }
 }
 
+// Simple project model for super-admin demo
+export interface ProjectWithStats {
+  id: string;
+  name: string;
+  company: string;
+  admin_email: string;
+  admin_password: string;
+  sessionCount: number;
+  gamesPlayed: number; // distinct players with at least one pick
+}
+
+export async function createProject(params: { name: string; company: string; adminEmail: string; adminPassword: string }) {
+  if (!isSupabaseConfigured()) throw new Error("Supabase is not configured");
+  const supa = getSupabase();
+  if (!supa) throw new Error("Supabase client not available");
+
+  const { data, error } = await supa
+    .from("projects")
+    .insert({
+      name: params.name,
+      company: params.company,
+      admin_email: params.adminEmail,
+      admin_password: params.adminPassword,
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) throw error || new Error("Failed to create project");
+  return data as { id: string; name: string; company: string; admin_email: string; admin_password: string };
+}
+
+export async function listProjectsWithStats(): Promise<ProjectWithStats[]> {
+  const supa = getSupabase();
+  if (!supa) throw new Error("Supabase not configured");
+
+  const { data: projects, error: pErr } = await supa.from("projects").select("id, name, company, admin_email, admin_password");
+  if (pErr || !projects) throw pErr || new Error("Failed to load projects");
+
+  const { data: sessions, error: sErr } = await supa.from("sessions").select("id, project_id");
+  if (sErr || !sessions) throw sErr || new Error("Failed to load sessions");
+
+  const { data: picks, error: pkErr } = await supa.from("picks").select("session_id, player_id");
+  if (pkErr || !picks) throw pkErr || new Error("Failed to load picks");
+
+  return (projects as any[]).map((proj) => {
+    const projSessions = sessions.filter((s: any) => s.project_id === proj.id);
+    const sessionIds = new Set(projSessions.map((s: any) => s.id));
+    const projPicks = picks.filter((pk: any) => sessionIds.has(pk.session_id));
+    const distinctPlayers = new Set(projPicks.map((pk: any) => pk.player_id));
+    return {
+      id: proj.id,
+      name: proj.name,
+      company: proj.company,
+      admin_email: proj.admin_email,
+      admin_password: proj.admin_password,
+      sessionCount: projSessions.length,
+      gamesPlayed: distinctPlayers.size,
+    } as ProjectWithStats;
+  });
+}
+
 // For results page: given a player token, load its session, talents, and all picks
 // for that session so we can aggregate results.
 export async function fetchResultsByToken(token: string) {

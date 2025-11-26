@@ -6,7 +6,7 @@ import { demoLogin, type DemoUser, type UserRole } from "@/lib/authDemo";
 interface AuthContextValue {
   user: DemoUser | null;
   role: UserRole | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<DemoUser | null>;
   logout: () => void;
 }
 
@@ -40,9 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(email: string, password: string) {
     const u = await demoLogin(email, password);
-    if (!u) return false;
+    if (!u) return null;
     setUser(u);
-    return true;
+    return u;
   }
 
   function logout() {

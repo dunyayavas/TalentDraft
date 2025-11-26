@@ -3,10 +3,22 @@
 
 create extension if not exists pgcrypto;
 
--- Sessions
-create table if not exists public.sessions (
+-- Projects (companies / tenants)
+create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  company text not null,
+  admin_email text not null,
+  admin_password text not null,
+  created_at timestamptz not null default now()
+);
+
+-- Sessions (games) belong to a project
+create table if not exists public.sessions (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid references public.projects(id),
+  name text not null,
+  company text,
   pick_mode text not null check (pick_mode in ('percentage','fixed')),
   pick_value integer not null,
   created_at timestamptz not null default now()

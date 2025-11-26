@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function Page() {
-  const { login, role } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("super@talentdraft.local");
   const [password, setPassword] = useState("super123");
@@ -19,13 +19,13 @@ export default function Page() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const ok = await login(email.trim(), password);
+    const u = await login(email.trim(), password);
     setLoading(false);
-    if (!ok) {
+    if (!u) {
       setError("Invalid email or password");
       return;
     }
-    const r = role || (email.includes("super") ? "super_admin" : email.includes("admin") ? "admin" : "player");
+    const r = u.role;
     if (r === "super_admin") router.push("/super-admin");
     else if (r === "admin") router.push("/admin-dashboard");
     else router.push("/player-dashboard");
