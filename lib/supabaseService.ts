@@ -10,6 +10,8 @@ export async function createGame(params: {
   rawRows: Record<string, string>[];
   players: AdminPlayerInput[];
   baseUrl: string;
+  company?: string;
+  projectId?: string;
 }) {
   if (!isSupabaseConfigured()) throw new Error("Supabase is not configured");
   const supa = getSupabase();
@@ -17,7 +19,13 @@ export async function createGame(params: {
 
   const { data: session, error: sErr } = await supa
     .from("sessions")
-    .insert({ name: params.sessionName, pick_mode: params.pickMode, pick_value: params.pickValue })
+    .insert({
+      name: params.sessionName,
+      pick_mode: params.pickMode,
+      pick_value: params.pickValue,
+      company: params.company ?? null,
+      project_id: params.projectId ?? null,
+    })
     .select("*")
     .single();
   if (sErr || !session) throw sErr || new Error("Failed to create session");

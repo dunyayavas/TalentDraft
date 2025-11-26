@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabaseClient";
-import AdminPage from "../admin/page";
+import { AdminGameSetup } from "@/components/admin-game-setup";
 
 interface SessionRow {
   id: string;
@@ -117,7 +117,7 @@ export default function AdminDashboardPage() {
       </Card>
 
       <div className="border-t pt-4">
-        <AdminPage />
+        <AdminGameSetup company={company} />
       </div>
     </div>
   );
