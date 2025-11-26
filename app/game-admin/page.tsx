@@ -469,7 +469,8 @@ export default function GameAdminPage() {
                   <TBody>
                     {players.map((p, idx) => {
                       const name = `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Player";
-                      const link = `/p?token=${encodeURIComponent(p.token)}`;
+                      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+                      const link = `${basePath}/p?token=${encodeURIComponent(p.token)}`;
                       return (
                         <TR key={p.id}>
                           <TD className="w-10">{idx + 1}</TD>
