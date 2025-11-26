@@ -88,8 +88,8 @@ export default function ProjectDetailsPage() {
     }
   }, [projectId]);
 
-  if (!user || role !== "super_admin") {
-    return <div className="text-sm text-destructive">Access denied. Please log in as super admin.</div>;
+  if (!user || (role !== "super_admin" && role !== "admin")) {
+    return <div className="text-sm text-destructive">Access denied. Please log in as admin.</div>;
   }
 
   return (
@@ -104,23 +104,25 @@ export default function ProjectDetailsPage() {
           )}
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              if (!projectId) return;
-              if (!window.confirm("Delete this project and all its sessions? This cannot be undone.")) return;
-              try {
-                await deleteProject(projectId);
-                router.push("/super-admin");
-              } catch (e: any) {
-                console.error(e);
-                alert(e?.message || "Failed to delete project");
-              }
-            }}
-          >
-            Delete Project
-          </Button>
+          {role === "super_admin" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!projectId) return;
+                if (!window.confirm("Delete this project and all its sessions? This cannot be undone.")) return;
+                try {
+                  await deleteProject(projectId);
+                  router.push("/super-admin");
+                } catch (e: any) {
+                  console.error(e);
+                  alert(e?.message || "Failed to delete project");
+                }
+              }}
+            >
+              Delete Project
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
