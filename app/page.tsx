@@ -26,9 +26,18 @@ export default function Page() {
       return;
     }
     const r = u.role;
-    if (r === "super_admin") router.push("/super-admin");
-    else if (r === "admin") router.push("/admin-dashboard");
-    else router.push("/player-dashboard");
+    if (r === "super_admin") {
+      router.push("/super-admin");
+    } else if (r === "admin") {
+      const projectId = (u as any).projectId as string | undefined;
+      if (projectId) {
+        router.push(`/super-admin/project?id=${encodeURIComponent(projectId)}`);
+      } else {
+        router.push("/admin-dashboard");
+      }
+    } else {
+      router.push("/player-dashboard");
+    }
   }
 
   return (

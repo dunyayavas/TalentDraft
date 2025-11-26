@@ -85,7 +85,7 @@ export default function GameAdminPage() {
           .from("players")
           .select("id, first_name, last_name, email, token")
           .eq("session_id", sessionId)
-          .order("created_at", { ascending: true });
+          .order("first_name", { ascending: true });
         if (pErr) throw pErr;
         setPlayers((pls || []) as any);
 
@@ -140,7 +140,7 @@ export default function GameAdminPage() {
         .from("players")
         .select("id, first_name, last_name, email, token")
         .eq("session_id", sessionId)
-        .order("created_at", { ascending: true });
+        .order("first_name", { ascending: true });
       if (pErr) throw pErr;
       setPlayers((pls || []) as any);
       setNewPlayers([{ firstName: "", lastName: "", email: "" }]);

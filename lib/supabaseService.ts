@@ -167,18 +167,18 @@ export async function deleteProject(projectId: string) {
 
 // Demo-only admin resolver: given email/password, see if there is a project
 // whose admin_email/admin_password match and, if so, return basic admin info.
-export async function findProjectAdminByCredentials(email: string, password: string): Promise<{ email: string; company: string } | null> {
+export async function findProjectAdminByCredentials(email: string, password: string): Promise<{ email: string; company: string; projectId: string } | null> {
   if (!isSupabaseConfigured()) return null;
   const supa = getSupabase();
   if (!supa) return null;
   const { data, error } = await supa
     .from("projects")
-    .select("company")
+    .select("id, company")
     .eq("admin_email", email)
     .eq("admin_password", password)
     .maybeSingle();
   if (error || !data) return null;
-  return { email, company: (data as any).company as string };
+  return { email, company: (data as any).company as string, projectId: (data as any).id as string };
 }
 
 // For results page: given a player token, load its session, talents, and all picks

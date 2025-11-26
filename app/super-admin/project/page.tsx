@@ -6,8 +6,7 @@ import { useAuth } from "@/components/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { AdminGameSetup } from "@/components/admin-game-setup";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { deleteProject } from "@/lib/supabaseService";
 
@@ -21,8 +20,10 @@ interface ProjectRow {
 interface SessionRow {
   id: string;
   name: string;
+  company: string | null;
   pick_mode: string;
   pick_value: number;
+  created_at: string;
 }
 
 export default function ProjectDetailsPage() {
@@ -34,10 +35,6 @@ export default function ProjectDetailsPage() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [newSessionName, setNewSessionName] = useState("");
-  const [newPickMode, setNewPickMode] = useState<"percentage" | "fixed">("fixed");
-  const [newPickValue, setNewPickValue] = useState(10);
-  const [creatingSession, setCreatingSession] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [resultsLoadingId, setResultsLoadingId] = useState<string | null>(null);
 
@@ -74,7 +71,7 @@ export default function ProjectDetailsPage() {
 
         const { data: sess, error: sErr } = await supa
           .from("sessions")
-          .select("id, name, pick_mode, pick_value")
+          .select("id, name, company, pick_mode, pick_value, created_at")
           .eq("project_id", projectId)
           .order("created_at", { ascending: false });
         if (sErr) throw sErr;
@@ -141,175 +138,112 @@ export default function ProjectDetailsPage() {
       {loading && <div className="text-sm text-muted-foreground">Loading project…</div>}
 
       {!loading && project && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Sessions in this Project</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4 grid gap-3 sm:flex sm:flex-wrap sm:items-end">
-              <div>
-                <Label htmlFor="session-name" className="text-xs">New session name</Label>
-                <Input
-                  id="session-name"
-                  value={newSessionName}
-                  onChange={(e) => setNewSessionName(e.target.value)}
-                  placeholder="e.g. Draft Round 1"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Pick mode</Label>
-                <select
-                  className="h-8 text-sm rounded-md border px-2 bg-background"
-                  value={newPickMode}
-                  onChange={(e) => setNewPickMode(e.target.value as any)}
-                >
-                  <option value="fixed">Fixed</option>
-                  <option value="percentage">Percentage</option>
-                </select>
-              </div>
-              <div>
-                <Label htmlFor="pick-value" className="text-xs">Pick value</Label>
-                <Input
-                  id="pick-value"
-                  type="number"
-                  value={newPickValue}
-                  onChange={(e) => setNewPickValue(Number(e.target.value) || 0)}
-                  className="h-8 text-sm w-24"
-                />
-              </div>
-              <Button
-                size="sm"
-                className="h-8"
-                disabled={creatingSession || !newSessionName}
-                onClick={async () => {
-                  if (!projectId) return;
-                  if (!isSupabaseConfigured()) {
-                    alert("Supabase is not configured. Cannot create session.");
-                    return;
-                  }
-                  try {
-                    setCreatingSession(true);
-                    const supa = getSupabase();
-                    if (!supa) throw new Error("Supabase client not available");
-                    const { error: sErr } = await supa.from("sessions").insert({
-                      project_id: projectId,
-                      name: newSessionName,
-                      company: project.company,
-                      pick_mode: newPickMode,
-                      pick_value: newPickValue,
-                    });
-                    if (sErr) throw sErr;
-                    const { data: sess, error: reloadErr } = await supa
-                      .from("sessions")
-                      .select("id, name, pick_mode, pick_value")
-                      .eq("project_id", projectId)
-                      .order("created_at", { ascending: false });
-                    if (reloadErr) throw reloadErr;
-                    setSessions((sess || []) as any);
-                    setNewSessionName("");
-                  } catch (e: any) {
-                    console.error(e);
-                    alert(e?.message || "Failed to create session");
-                  } finally {
-                    setCreatingSession(false);
-                  }
-                }}
-              >
-                {creatingSession ? "Creating..." : "Create Session"}
-              </Button>
-            </div>
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Name</TH>
-                  <TH>Pick Mode</TH>
-                  <TH>Pick Value</TH>
-                  <TH className="w-24 text-right">Actions</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {sessions.map((s) => (
-                  <TR key={s.id}>
-                    <TD className="whitespace-nowrap">{s.name}</TD>
-                    <TD>{s.pick_mode}</TD>
-                    <TD>{s.pick_value}</TD>
-                    <TD className="align-top">
-                      <div className="relative flex justify-end">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 w-7 px-0"
-                          onClick={() =>
-                            setOpenMenuId((prev) => (prev === s.id ? null : s.id))
-                          }
-                        >
-                          ···
-                        </Button>
-                        {openMenuId === s.id && (
-                          <div className="absolute right-0 top-7 z-10 w-40 rounded-md border bg-background shadow-md text-xs">
-                            <button
-                              className="block w-full px-3 py-2 text-left hover:bg-muted"
-                              onClick={() => {
-                                setOpenMenuId(null);
-                                router.push(`/game-admin?session=${s.id}`);
-                              }}
-                            >
-                              Players & Picks
-                            </button>
-                            <button
-                              className="block w-full px-3 py-2 text-left hover:bg-muted disabled:opacity-60"
-                              disabled={resultsLoadingId === s.id}
-                              onClick={async () => {
-                                setResultsLoadingId(s.id);
-                                setOpenMenuId(null);
-                                try {
-                                  if (!isSupabaseConfigured()) {
-                                    alert("Supabase is not configured.");
-                                    return;
-                                  }
-                                  const supa = getSupabase();
-                                  if (!supa) throw new Error("Supabase client not available");
-                                  const { data, error: pErr } = await supa
-                                    .from("players")
-                                    .select("token")
-                                    .eq("session_id", s.id)
-                                    .limit(1)
-                                    .maybeSingle();
-                                  if (pErr) throw pErr;
-                                  if (!data || !data.token) {
-                                    alert("No players found for this game yet.");
-                                    return;
-                                  }
-                                  const url = `/results?token=${encodeURIComponent(
-                                    (data as any).token as string,
-                                  )}`;
-                                  router.push(url);
-                                } catch (e: any) {
-                                  console.error(e);
-                                  alert(e?.message || "Failed to open results");
-                                } finally {
-                                  setResultsLoadingId(null);
-                                }
-                              }}
-                            >
-                              {resultsLoadingId === s.id ? "Opening Results…" : "Results"}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </TD>
-                  </TR>
-                ))}
-                {sessions.length === 0 && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Existing Games</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <THead>
                   <TR>
-                    <TD colSpan={4} className="text-sm text-muted-foreground">No sessions yet for this project.</TD>
+                    <TH>Name</TH>
+                    <TH>Company</TH>
+                    <TH>Pick Mode</TH>
+                    <TH>Pick Value</TH>
+                    <TH className="w-40">Created At</TH>
+                    <TH className="w-24 text-right">Actions</TH>
                   </TR>
-                )}
-              </TBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </THead>
+                <TBody>
+                  {sessions.map((s) => (
+                    <TR key={s.id}>
+                      <TD className="whitespace-nowrap">{s.name}</TD>
+                      <TD className="whitespace-nowrap">{s.company || project.company}</TD>
+                      <TD>{s.pick_mode}</TD>
+                      <TD>{s.pick_value}</TD>
+                      <TD className="whitespace-nowrap text-xs text-muted-foreground">{new Date(s.created_at).toLocaleString()}</TD>
+                      <TD className="align-top">
+                        <div className="relative flex justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 w-7 px-0"
+                            onClick={() =>
+                              setOpenMenuId((prev) => (prev === s.id ? null : s.id))
+                            }
+                          >
+                            ···
+                          </Button>
+                          {openMenuId === s.id && (
+                            <div className="absolute right-0 top-7 z-10 w-40 rounded-md border bg-background shadow-md text-xs">
+                              <button
+                                className="block w-full px-3 py-2 text-left hover:bg-muted"
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  router.push(`/game-admin?session=${s.id}`);
+                                }}
+                              >
+                                Players & Picks
+                              </button>
+                              <button
+                                className="block w-full px-3 py-2 text-left hover:bg-muted disabled:opacity-60"
+                                disabled={resultsLoadingId === s.id}
+                                onClick={async () => {
+                                  setResultsLoadingId(s.id);
+                                  setOpenMenuId(null);
+                                  try {
+                                    if (!isSupabaseConfigured()) {
+                                      alert("Supabase is not configured.");
+                                      return;
+                                    }
+                                    const supa = getSupabase();
+                                    if (!supa) throw new Error("Supabase client not available");
+                                    const { data, error: pErr } = await supa
+                                      .from("players")
+                                      .select("token")
+                                      .eq("session_id", s.id)
+                                      .limit(1)
+                                      .maybeSingle();
+                                    if (pErr) throw pErr;
+                                    if (!data || !data.token) {
+                                      alert("No players found for this game yet.");
+                                      return;
+                                    }
+                                    const url = `/results?token=${encodeURIComponent(
+                                      (data as any).token as string,
+                                    )}`;
+                                    router.push(url);
+                                  } catch (e: any) {
+                                    console.error(e);
+                                    alert(e?.message || "Failed to open results");
+                                  } finally {
+                                    setResultsLoadingId(null);
+                                  }
+                                }}
+                              >
+                                {resultsLoadingId === s.id ? "Opening Results…" : "Results"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </TD>
+                    </TR>
+                  ))}
+                  {sessions.length === 0 && (
+                    <TR>
+                      <TD colSpan={6} className="text-sm text-muted-foreground">No games yet for this project.</TD>
+                    </TR>
+                  )}
+                </TBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <div className="border-t pt-4">
+            <AdminGameSetup company={project.company} projectId={project.id} />
+          </div>
+        </>
       )}
     </div>
   );

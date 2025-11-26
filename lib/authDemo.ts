@@ -8,6 +8,7 @@ export interface DemoUser {
   password: string;
   role: UserRole;
   company?: string;
+  projectId?: string;
 }
 
 // Simple in-memory demo users. Passwords are plain text for illustration only.
@@ -45,11 +46,12 @@ export async function demoLogin(email: string, password: string): Promise<DemoUs
   const projectAdmin = await findProjectAdminByCredentials(email.toLowerCase(), password);
   if (projectAdmin) {
     return {
-      id: `proj-admin-${projectAdmin.company}`,
+      id: `proj-admin-${projectAdmin.projectId}`,
       email: projectAdmin.email,
       password,
       role: "admin",
       company: projectAdmin.company,
+      projectId: projectAdmin.projectId,
     };
   }
 
