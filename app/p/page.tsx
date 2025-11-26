@@ -30,7 +30,7 @@ function PlayerPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<{ id: string; name: string; pick_mode: "percentage" | "fixed"; pick_value: number } | null>(null);
   const [player, setPlayer] = useState<any>(null);
-  const [talents, setTalents] = useState<Array<{ id: string; name: string; func?: string | null; timeInCompany?: string | null }>>([]);
+  const [talents, setTalents] = useState<Array<{ id: string; name: string; func?: string | null; timeInCompany?: string | null; extra?: Record<string, any> | null }>>([]);
   const [slots, setSlots] = useState<Array<{ talentId: string; rationale?: string } | null>>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -80,6 +80,7 @@ function PlayerPageInner() {
           name: t.name,
           func: (t as any).function || null,
           timeInCompany: (t as any).time_in_company || null,
+          extra: (t as any).extra || null,
         })));
         const total = (data.talents || []).length;
         let quota = data.session.pick_mode === "percentage" ? Math.max(1, Math.ceil((total * data.session.pick_value) / 100)) : Math.max(1, Math.min(total, Math.floor(data.session.pick_value)));
@@ -126,6 +127,15 @@ function PlayerPageInner() {
     if (!t) return id;
     return t.func ? `${t.name} — ${t.func}` : t.name;
   }, [talents]);
+
+  const getDetailsForId = useMemo(
+    () =>
+      (id: string): Record<string, any> | null => {
+        const t = talents.find((x) => x.id === id);
+        return (t && t.extra) || null;
+      },
+    [talents]
+  );
 
   function getActiveLabel() {
     if (!activeId) return null;
@@ -303,13 +313,20 @@ function PlayerPageInner() {
             <ScrollArea className="h-[70vh] overflow-x-hidden">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {slots.map((s, idx) => (
-                  <PickSlot key={idx} index={idx} value={s} displayName={s ? idToDisplay(s.talentId) : undefined} onChange={(val) => {
-                    setSlots((prev) => {
-                      const next = [...prev];
-                      next[idx] = val;
-                      return next;
+                  <PickSlot
+                    key={idx}
+                    index={idx}
+                    value={s}
+                    displayName={s ? idToDisplay(s.talentId) : undefined}
+                    details={s ? getDetailsForId(s.talentId) || undefined : undefined}
+                    onChange={(val) => {
+                      setSlots((prev) => {
+                        const next = [...prev];
+                        next[idx] = val;
+                        return next;
                     });
-                  }} />
+                  }}
+                  />
                 ))}
               </div>
             </ScrollArea>
@@ -349,7 +366,7 @@ function DraggablePoolCard({ id, name, func }: { id: string; name: string; func?
   );
 }
 
-function PickSlot({ index, value, displayName, onChange }: { index: number; value: { talentId: string; rationale?: string } | null; displayName?: string; onChange: (v: { talentId: string; rationale?: string } | null) => void }) {
+function PickSlot({ index, value, displayName, details, onChange }: { index: number; value: { talentId: string; rationale?: string } | null; displayName?: string; details?: Record<string, any>; onChange: (v: { talentId: string; rationale?: string } | null) => void }) {
   const { isOver, setNodeRef } = useDroppable({ id: `slot:${index}` });
   const highlight = isOver ? "ring-2 ring-blue-500" : "";
 
@@ -357,7 +374,14 @@ function PickSlot({ index, value, displayName, onChange }: { index: number; valu
     <div ref={setNodeRef} className={`rounded-md border p-3 ${highlight}`}>
       <div className="text-xs text-muted-foreground mb-2">#{index + 1}</div>
       {value ? (
-        <DraggablePickCard index={index} value={value} displayName={displayName || value.talentId} onRemove={() => onChange(null)} onRationale={(r) => onChange({ ...value, rationale: r })} />
+        <DraggablePickCard
+          index={index}
+          value={value}
+          displayName={displayName || value.talentId}
+          details={details}
+          onRemove={() => onChange(null)}
+          onRationale={(r) => onChange({ ...value, rationale: r })}
+        />
       ) : (
         <div className="h-10 text-sm text-muted-foreground flex items-center">Drop talent here</div>
       )}
@@ -365,11 +389,12 @@ function PickSlot({ index, value, displayName, onChange }: { index: number; valu
   );
 }
 
-function DraggablePickCard({ index, value, displayName, onRemove, onRationale }: { index: number; value: { talentId: string; rationale?: string }; displayName: string; onRemove: () => void; onRationale: (r: string) => void }) {
+function DraggablePickCard({ index, value, displayName, details, onRemove, onRationale }: { index: number; value: { talentId: string; rationale?: string }; displayName: string; details?: Record<string, any>; onRemove: () => void; onRationale: (r: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `slot:${index}` });
   const style = { transform: CSS.Transform.toString(transform || null) } as React.CSSProperties;
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value.rationale || "");
+  const [showDetails, setShowDetails] = useState(false);
 
   function onSaveClick() {
     onRationale(draft.trim());
@@ -408,6 +433,16 @@ function DraggablePickCard({ index, value, displayName, onRemove, onRationale }:
             aria-label={value.rationale ? "Edit rationale" : "Add rationale"}
           >
             +
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 w-7 text-xs flex items-center justify-center"
+            onClick={() => setShowDetails(true)}
+            aria-label="View details"
+          >
+            <span className="text-lg leading-none">⋯</span>
           </Button>
           <Button
             type="button"
@@ -461,6 +496,40 @@ function DraggablePickCard({ index, value, displayName, onRemove, onRationale }:
                   Save
                 </Button>
               </div>
+            </div>
+          </div>
+        )}
+        {showDetails && details && (
+          <div
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/40"
+            onClick={() => setShowDetails(false)}
+          >
+            <div
+              className="w-full max-w-lg max-h-[80vh] rounded-md border bg-background p-4 shadow-lg mx-4 flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="font-semibold text-sm">{displayName}</div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setShowDetails(false)}
+                >
+                  Close
+                </Button>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="space-y-1 text-xs">
+                  {Object.entries(details).map(([key, val]) => (
+                    <div key={key} className="flex gap-2">
+                      <div className="w-32 shrink-0 font-medium text-muted-foreground break-words">{key}</div>
+                      <div className="flex-1 break-words">{String(val ?? "")}</div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
           </div>
         )}
