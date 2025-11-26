@@ -1,42 +1,65 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabaseClient";
+import AdminPage from "../admin/page";
 
-interface DemoGame {
+interface SessionRow {
   id: string;
   name: string;
-  company: string;
+  company: string | null;
+  pick_mode: string;
+  pick_value: number;
+  created_at: string;
 }
-
-const demoGames: DemoGame[] = [
-  { id: "g-1", name: "Acme FY25 Talent Draft", company: "Acme Corp" },
-  { id: "g-2", name: "Globex Pilot", company: "Globex" },
-];
 
 export default function AdminDashboardPage() {
   const { user, role, logout } = useAuth();
   const router = useRouter();
-  const [newGameName, setNewGameName] = useState("");
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   if (!user || role !== "admin") {
     return <div className="text-sm text-destructive">Access denied. Please log in as admin.</div>;
   }
 
   const company = user.company || "Unknown";
-  const games = useMemo(() => demoGames.filter((g) => g.company === company), [company]);
 
-  function handleCreateGame() {
-    if (!newGameName) return;
-    alert(`Demo only: would create game "${newGameName}" for ${company}.`);
-    setNewGameName("");
-  }
+  useEffect(() => {
+    async function load() {
+      if (!isSupabaseConfigured()) {
+        setError("Supabase is not configured.");
+        setLoading(false);
+        return;
+      }
+      try {
+        const supa = getSupabase();
+        if (!supa) throw new Error("Supabase client not available");
+        let query = supa
+          .from("sessions")
+          .select("id, name, company, pick_mode, pick_value, created_at")
+          .order("created_at", { ascending: false });
+        if (company && company !== "Unknown") {
+          query = query.eq("company", company);
+        }
+        const { data, error: sErr } = await query;
+        if (sErr) throw sErr;
+        setSessions((data || []) as any);
+      } catch (e: any) {
+        console.error(e);
+        setError(e?.message || "Failed to load games");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [company]);
 
   return (
     <div className="space-y-6">
@@ -59,51 +82,43 @@ export default function AdminDashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Your Games</CardTitle>
+          <CardTitle>Existing Games</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2 items-end">
-            <div>
-              <Label htmlFor="admin-game-name" className="text-xs">New game name</Label>
-              <Input
-                id="admin-game-name"
-                value={newGameName}
-                onChange={(e) => setNewGameName(e.target.value)}
-                placeholder="e.g. Acme FY25 Draft"
-                className="h-8 text-sm"
-              />
-            </div>
-            <Button size="sm" className="h-8" onClick={handleCreateGame}>Create Game (demo)</Button>
-          </div>
-
+        <CardContent>
+          {error && <div className="text-sm text-destructive mb-2">{error}</div>}
           <Table>
             <THead>
               <TR>
                 <TH>Name</TH>
-                <TH className="w-40">Actions</TH>
+                <TH>Company</TH>
+                <TH>Pick Mode</TH>
+                <TH>Pick Value</TH>
+                <TH className="w-40">Created At</TH>
               </TR>
             </THead>
             <TBody>
-              {games.map((g) => (
-                <TR key={g.id}>
-                  <TD className="whitespace-nowrap">{g.name}</TD>
-                  <TD>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => alert("Demo only: edit game/players.")}>Edit</Button>
-                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => alert("Demo only: open results for this game.")}>View Results</Button>
-                    </div>
-                  </TD>
+              {sessions.map((s) => (
+                <TR key={s.id}>
+                  <TD className="whitespace-nowrap">{s.name}</TD>
+                  <TD className="whitespace-nowrap">{s.company || "-"}</TD>
+                  <TD>{s.pick_mode}</TD>
+                  <TD>{s.pick_value}</TD>
+                  <TD className="whitespace-nowrap text-xs text-muted-foreground">{new Date(s.created_at).toLocaleString()}</TD>
                 </TR>
               ))}
-              {games.length === 0 && (
+              {!loading && sessions.length === 0 && (
                 <TR>
-                  <TD colSpan={2} className="text-sm text-muted-foreground">No games for this company yet.</TD>
+                  <TD colSpan={5} className="text-sm text-muted-foreground">No games found for this company yet.</TD>
                 </TR>
               )}
             </TBody>
           </Table>
         </CardContent>
       </Card>
+
+      <div className="border-t pt-4">
+        <AdminPage />
+      </div>
     </div>
   );
 }
