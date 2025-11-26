@@ -88,3 +88,37 @@ export async function savePlayerPicks(sessionId: string, playerId: string, picks
     if (insErr) throw insErr;
   }
 }
+
+// For results page: given a player token, load its session, talents, and all picks
+// for that session so we can aggregate results.
+export async function fetchResultsByToken(token: string) {
+  const supa = getSupabase();
+  if (!supa) throw new Error("Supabase not configured");
+
+  // Reuse the players-sessions join to resolve the session from the token
+  const { data: player, error: pErr } = await supa
+    .from("players")
+    .select("*, sessions!inner(*)")
+    .eq("token", token)
+    .single();
+  if (pErr || !player) throw pErr || new Error("Invalid link");
+
+  const session = player.sessions as any as { id: string; name: string; pick_mode: "percentage" | "fixed"; pick_value: number };
+
+  const { data: talents, error: tErr } = await supa
+    .from("talents")
+    .select("*")
+    .eq("session_id", session.id)
+    .order("name", { ascending: true });
+  if (tErr) throw tErr;
+
+  const { data: picks, error: pickErr } = await supa
+    .from("picks")
+    .select("player_id, order, talent_id")
+    .eq("session_id", session.id)
+    .order("player_id", { ascending: true })
+    .order("order", { ascending: true });
+  if (pickErr) throw pickErr;
+
+  return { session, talents: talents || [], picks: picks || [] };
+}

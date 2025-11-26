@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -304,9 +305,14 @@ function PlayerPageInner() {
         <Card className="sm:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>My Picks ({slots.filter(Boolean).length}/{N})</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <Button variant="outline" onClick={() => setSlots((prev) => prev.map(() => null))}>Clear</Button>
               <Button onClick={onSave}>Save</Button>
+              {token && (
+                <Link href={{ pathname: "/results", query: { token } }}>
+                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs">Results</Button>
+                </Link>
+              )}
             </div>
           </CardHeader>
           <CardContent>
