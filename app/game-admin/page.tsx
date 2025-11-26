@@ -33,6 +33,19 @@ interface NewPlayerInput {
   email: string;
 }
 
+interface TalentRow {
+  id: string;
+  name: string;
+  function: string | null;
+  department: string | null;
+  level: string | null;
+  grade: string | null;
+  time_in_company: string | null;
+  time_in_job: string | null;
+  performance: string | null;
+  potential: string | null;
+}
+
 export default function GameAdminPage() {
   const router = useRouter();
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -40,6 +53,7 @@ export default function GameAdminPage() {
   const [sessionName, setSessionName] = useState("");
   const [pickMode, setPickMode] = useState<"percentage" | "fixed">("fixed");
   const [pickValue, setPickValue] = useState<number>(10);
+  const [talents, setTalents] = useState<TalentRow[]>([]);
   const [players, setPlayers] = useState<PlayerRow[]>([]);
   const [talentCount, setTalentCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,12 +109,14 @@ export default function GameAdminPage() {
         if (pErr) throw pErr;
         setPlayers((pls || []) as any);
 
-        const { count, error: tErr } = await supa
+        const { data: tdata, count, error: tErr } = await supa
           .from("talents")
-          .select("id", { count: "exact", head: true })
-          .eq("session_id", sessionId);
+          .select("id, name, function, department, level, grade, time_in_company, time_in_job, performance, potential", { count: "exact" })
+          .eq("session_id", sessionId)
+          .order("name", { ascending: true });
         if (tErr) throw tErr;
-        setTalentCount(count ?? 0);
+        setTalents((tdata || []) as any);
+        setTalentCount(count ?? (tdata ? tdata.length : 0));
       } catch (e: any) {
         console.error(e);
         setError(e?.message || "Failed to load game");
@@ -342,6 +358,36 @@ export default function GameAdminPage() {
                   <p className="text-xs text-muted-foreground">Uploading and adding talents…</p>
                 )}
               </div>
+              {talents.length > 0 && (
+                <div className="mt-4 border rounded-md overflow-auto max-h-80">
+                  <Table>
+                    <THead>
+                      <TR>
+                        <TH>Name</TH>
+                        <TH>Function</TH>
+                        <TH>Department</TH>
+                        <TH>Level</TH>
+                        <TH>Grade</TH>
+                        <TH>Time in Company</TH>
+                        <TH>Time in Job</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {talents.map((t) => (
+                        <TR key={t.id}>
+                          <TD className="whitespace-nowrap">{t.name}</TD>
+                          <TD className="whitespace-nowrap">{t.function || "-"}</TD>
+                          <TD className="whitespace-nowrap">{t.department || "-"}</TD>
+                          <TD className="whitespace-nowrap">{t.level || "-"}</TD>
+                          <TD className="whitespace-nowrap">{t.grade || "-"}</TD>
+                          <TD className="whitespace-nowrap text-xs">{t.time_in_company || "-"}</TD>
+                          <TD className="whitespace-nowrap text-xs">{t.time_in_job || "-"}</TD>
+                        </TR>
+                      ))}
+                    </TBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
 

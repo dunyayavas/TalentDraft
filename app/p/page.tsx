@@ -308,11 +308,6 @@ function PlayerPageInner() {
             <div className="flex gap-2 items-center">
               <Button variant="outline" onClick={() => setSlots((prev) => prev.map(() => null))}>Clear</Button>
               <Button onClick={onSave}>Save</Button>
-              {token && (
-                <Link href={{ pathname: "/results", query: { token } }}>
-                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs">Results</Button>
-                </Link>
-              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -400,6 +395,7 @@ function DraggablePickCard({ index, value, displayName, details, onRemove, onRat
   const style = { transform: CSS.Transform.toString(transform || null) } as React.CSSProperties;
   const [draft, setDraft] = useState(value.rationale || "");
   const [showDetails, setShowDetails] = useState(false);
+  const [role, setRole] = useState("");
 
   function onSaveClick() {
     onRationale(draft.trim());
@@ -474,6 +470,15 @@ function DraggablePickCard({ index, value, displayName, details, onRemove, onRat
                   rows={4}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
+                />
+              </div>
+              <div className="mt-3">
+                <Label className="text-xs mb-1 block">Role</Label>
+                <textarea
+                  className="w-full rounded-md border px-2 py-1 text-xs bg-background"
+                  rows={2}
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
                 />
               </div>
             </ScrollArea>
