@@ -24,6 +24,8 @@ export default function AdminDashboardPage() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [resultsLoadingId, setResultsLoadingId] = useState<string | null>(null);
 
   if (!user || role !== "admin") {
     return <div className="text-sm text-destructive">Access denied. Please log in as admin.</div>;
@@ -94,6 +96,7 @@ export default function AdminDashboardPage() {
                 <TH>Pick Mode</TH>
                 <TH>Pick Value</TH>
                 <TH className="w-40">Created At</TH>
+                <TH className="w-24 text-right">Actions</TH>
               </TR>
             </THead>
             <TBody>
@@ -104,11 +107,76 @@ export default function AdminDashboardPage() {
                   <TD>{s.pick_mode}</TD>
                   <TD>{s.pick_value}</TD>
                   <TD className="whitespace-nowrap text-xs text-muted-foreground">{new Date(s.created_at).toLocaleString()}</TD>
+                  <TD className="align-top">
+                    <div className="relative flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 px-0"
+                        onClick={() =>
+                          setOpenMenuId((prev) => (prev === s.id ? null : s.id))
+                        }
+                      >
+                        ···
+                      </Button>
+                      {openMenuId === s.id && (
+                        <div className="absolute right-0 top-7 z-10 w-40 rounded-md border bg-background shadow-md text-xs">
+                          <button
+                            className="block w-full px-3 py-2 text-left hover:bg-muted"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              router.push(`/game-admin?session=${s.id}`);
+                            }}
+                          >
+                            Edit Game
+                          </button>
+                          <button
+                            className="block w-full px-3 py-2 text-left hover:bg-muted disabled:opacity-60"
+                            disabled={resultsLoadingId === s.id}
+                            onClick={async () => {
+                              setResultsLoadingId(s.id);
+                              setOpenMenuId(null);
+                              try {
+                                if (!isSupabaseConfigured()) {
+                                  alert("Supabase is not configured.");
+                                  return;
+                                }
+                                const supa = getSupabase();
+                                if (!supa) throw new Error("Supabase client not available");
+                                const { data, error: pErr } = await supa
+                                  .from("players")
+                                  .select("token")
+                                  .eq("session_id", s.id)
+                                  .limit(1)
+                                  .maybeSingle();
+                                if (pErr) throw pErr;
+                                if (!data || !data.token) {
+                                  alert("No players found for this game yet.");
+                                  return;
+                                }
+                                const url = `/results?token=${encodeURIComponent(
+                                  (data as any).token as string,
+                                )}`;
+                                router.push(url);
+                              } catch (e: any) {
+                                console.error(e);
+                                alert(e?.message || "Failed to open results");
+                              } finally {
+                                setResultsLoadingId(null);
+                              }
+                            }}
+                          >
+                            {resultsLoadingId === s.id ? "Opening Results…" : "View Results"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </TD>
                 </TR>
               ))}
               {!loading && sessions.length === 0 && (
                 <TR>
-                  <TD colSpan={5} className="text-sm text-muted-foreground">No games found for this company yet.</TD>
+                  <TD colSpan={6} className="text-sm text-muted-foreground">No games found for this company yet.</TD>
                 </TR>
               )}
             </TBody>

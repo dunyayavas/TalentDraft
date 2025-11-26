@@ -38,6 +38,8 @@ export default function ProjectDetailsPage() {
   const [newPickMode, setNewPickMode] = useState<"percentage" | "fixed">("fixed");
   const [newPickValue, setNewPickValue] = useState(10);
   const [creatingSession, setCreatingSession] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [resultsLoadingId, setResultsLoadingId] = useState<string | null>(null);
 
   // Read project id from query string on client side to avoid useSearchParams
   useEffect(() => {
@@ -223,7 +225,7 @@ export default function ProjectDetailsPage() {
                   <TH>Name</TH>
                   <TH>Pick Mode</TH>
                   <TH>Pick Value</TH>
-                  <TH className="w-40">Actions</TH>
+                  <TH className="w-24 text-right">Actions</TH>
                 </TR>
               </THead>
               <TBody>
@@ -232,24 +234,69 @@ export default function ProjectDetailsPage() {
                     <TD className="whitespace-nowrap">{s.name}</TD>
                     <TD>{s.pick_mode}</TD>
                     <TD>{s.pick_value}</TD>
-                    <TD>
-                      <div className="flex gap-2">
+                    <TD className="align-top">
+                      <div className="relative flex justify-end">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => alert("Demo: would show players and picks for this session.")}
+                          className="h-7 w-7 px-0"
+                          onClick={() =>
+                            setOpenMenuId((prev) => (prev === s.id ? null : s.id))
+                          }
                         >
-                          Players & Picks
+                          ···
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => alert("Demo: would open aggregated results for this session.")}
-                        >
-                          Results
-                        </Button>
+                        {openMenuId === s.id && (
+                          <div className="absolute right-0 top-7 z-10 w-40 rounded-md border bg-background shadow-md text-xs">
+                            <button
+                              className="block w-full px-3 py-2 text-left hover:bg-muted"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                router.push(`/game-admin?session=${s.id}`);
+                              }}
+                            >
+                              Players & Picks
+                            </button>
+                            <button
+                              className="block w-full px-3 py-2 text-left hover:bg-muted disabled:opacity-60"
+                              disabled={resultsLoadingId === s.id}
+                              onClick={async () => {
+                                setResultsLoadingId(s.id);
+                                setOpenMenuId(null);
+                                try {
+                                  if (!isSupabaseConfigured()) {
+                                    alert("Supabase is not configured.");
+                                    return;
+                                  }
+                                  const supa = getSupabase();
+                                  if (!supa) throw new Error("Supabase client not available");
+                                  const { data, error: pErr } = await supa
+                                    .from("players")
+                                    .select("token")
+                                    .eq("session_id", s.id)
+                                    .limit(1)
+                                    .maybeSingle();
+                                  if (pErr) throw pErr;
+                                  if (!data || !data.token) {
+                                    alert("No players found for this game yet.");
+                                    return;
+                                  }
+                                  const url = `/results?token=${encodeURIComponent(
+                                    (data as any).token as string,
+                                  )}`;
+                                  router.push(url);
+                                } catch (e: any) {
+                                  console.error(e);
+                                  alert(e?.message || "Failed to open results");
+                                } finally {
+                                  setResultsLoadingId(null);
+                                }
+                              }}
+                            >
+                              {resultsLoadingId === s.id ? "Opening Results…" : "Results"}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </TD>
                   </TR>

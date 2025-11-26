@@ -155,7 +155,7 @@ export function AdminGameSetup({ company, projectId }: AdminGameSetupProps) {
     <div className="grid gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Session</CardTitle>
+          <CardTitle>Create a Game</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-1.5">
