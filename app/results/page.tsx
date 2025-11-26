@@ -45,8 +45,13 @@ export default function ResultsPage() {
   }
 
   function onExportCSV() {
-    const header = ["Talent","CriticalityScore","Popularity","AvgOrder"];
-    const data = rows.map((r)=> [r.name, String(r.criticalityScore), String(r.popularity), r.avgOrder==null?"":String(r.avgOrder)]);
+    const header = ["Talent","TimesChosen","TotalPoints","AvgRanking"];
+    const data = rows.map((r)=> [
+      r.name,
+      String(r.timesChosen),
+      String(r.totalPoints),
+      r.avgOrder == null ? "" : String(r.avgOrder),
+    ]);
     downloadCsv("talent_results.csv", [header, ...data]);
   }
 
@@ -83,26 +88,24 @@ export default function ResultsPage() {
             <Table>
               <THead>
                 <TR>
-                  <TH>#</TH>
                   <TH>Talent</TH>
-                  <TH>Criticality</TH>
-                  <TH>Popularity</TH>
-                  <TH>Avg Order</TH>
+                  <TH>Times Chosen</TH>
+                  <TH>Total Points</TH>
+                  <TH>Avg Ranking</TH>
                 </TR>
               </THead>
               <TBody>
                 {rows.map((r, idx) => (
                   <TR key={r.talentId}>
-                    <TD className="w-12">{idx + 1}</TD>
                     <TD className="whitespace-nowrap">{r.name}</TD>
-                    <TD>{r.criticalityScore}</TD>
-                    <TD>{r.popularity}</TD>
+                    <TD>{r.timesChosen}</TD>
+                    <TD>{r.totalPoints}</TD>
                     <TD>{r.avgOrder ?? "-"}</TD>
                   </TR>
                 ))}
                 {rows.length===0 && (
                   <TR>
-                    <TD colSpan={5} className="text-muted-foreground">No results yet. Import session and submissions.</TD>
+                    <TD colSpan={4} className="text-muted-foreground">No results yet. Import session and submissions.</TD>
                   </TR>
                 )}
               </TBody>

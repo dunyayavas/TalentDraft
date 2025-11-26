@@ -68,7 +68,7 @@ export interface PlayerSubmission {
 export interface TalentScoreRow {
   talentId: string;
   name: string;
-  criticalityScore: number;
-  popularity: number; // number of players who picked
-  avgOrder: number | null; // null if never picked
+  timesChosen: number; // total times this talent was picked across all players
+  totalPoints: number; // aggregate points based on pick order
+  avgOrder: number | null; // average ranking position when picked; null if never picked
 }
